@@ -1,0 +1,237 @@
+/* ── Keyframes ───────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Shared styles for Login and Signup */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  animation: fadeUp 0.5s ease forwards;
+}
+
+/* ── Header ──────────────────────────────────── */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ── Form container ──────────────────────────── */
+.form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── Field ───────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+
+.field input[type='email'],
+.field input[type='password'],
+.field input[type='text'] {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-font-smoothing: antialiased;
+}
+.field input::placeholder { color: var(--text-muted); }
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── Two-column row ──────────────────────────── */
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ── Remember / forgot row ───────────────────── */
+.rowBetween {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -4px;
+}
+
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.checkLabel input[type='checkbox'] {
+  width: 14px; height: 14px;
+  accent-color: var(--accent);
+}
+
+.forgotLink {
+  font-size: 13px;
+  color: var(--accent);
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.forgotLink:hover { opacity: 1; }
+
+/* ── Terms ───────────────────────────────────── */
+.termsLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  cursor: pointer;
+  margin-top: 2px;
+}
+.termsLabel input[type='checkbox'] {
+  width: 14px; height: 14px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.termsLabel a {
+  color: var(--accent);
+  transition: opacity 0.2s;
+}
+.termsLabel a:hover { opacity: 0.8; }
+
+/* ── Password strength ───────────────────────── */
+.strengthBar {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.strengthSeg {
+  flex: 1;
+  height: 3px;
+  background: var(--border-2);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Error ───────────────────────────────────── */
+.errorMsg {
+  font-size: 13px;
+  color: #f87171;
+  margin-top: 2px;
+}
+
+/* ── Submit button ───────────────────────────── */
+.submitBtn {
+  width: 100%;
+  background: var(--accent);
+  color: #0A0800;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px;
+  border-radius: var(--radius);
+  border: none;
+  letter-spacing: 0.02em;
+  transition: opacity 0.2s, transform 0.15s;
+  margin-top: 4px;
+}
+.submitBtn:hover { opacity: 0.88; transform: translateY(-1px); }
+.submitBtn:active { transform: translateY(0); }
+
+/* ── Divider ─────────────────────────────────── */
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 22px 0;
+}
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 1px;
+  background: var(--border);
+}
+.divider span {
+  position: relative;
+  background: var(--bg);
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Switch link ─────────────────────────────── */
+.switchAuth {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.switchAuth a {
+  color: var(--accent);
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.switchAuth a:hover { opacity: 0.8; }
