@@ -1,7 +1,20 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import Nav from '../components/Nav'
 import DotGrid from '../components/DotGrid'
+
+function useHashScroll() {
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (!hash) return
+    const id = hash.slice(1)
+    // Wait a tick so the section is mounted before we scroll.
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [hash])
+}
 
 const STEPS = [
   {
@@ -40,6 +53,7 @@ const FEATURES = [
 ]
 
 export default function Landing() {
+  useHashScroll()
   return (
     <div className="relative bg-white min-h-screen">
       <DotGrid />

@@ -3,20 +3,23 @@ import { Link, useNavigate } from 'react-router-dom'
 import DotGrid from '../components/DotGrid'
 import { auth, animations, clearToken, isLoggedIn } from '../api'
 
-const PENDING_HINTS = [
-  'Spinning up your renderer…',
-  'Almost in the queue…',
-  'Allocating compute…',
-  'Nearly there…',
-  'Starting any second now…',
-]
-
 const STATUS_META = {
   idle:       { label: 'Ready',       color: '#94a3b8', bg: '#f8fafc' },
   PENDING:    { label: 'Queued',      color: '#ca8a04', bg: '#fefce8' },
   PROCESSING: { label: 'Generating',  color: '#2563eb', bg: '#eff6ff' },
   COMPLETED:  { label: 'Done',        color: '#16a34a', bg: '#f0fdf4' },
   FAILED:     { label: 'Failed',      color: '#dc2626', bg: '#fef2f2' },
+}
+
+// Expected time budgets in seconds, used to drive the progress bar.
+const EXPECTED_PENDING_SEC = 4
+const EXPECTED_WRITING_SEC = 18
+const EXPECTED_RENDER_SEC  = 45
+
+function formatElapsed(sec) {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return m > 0 ? `${m}m ${s.toString().padStart(2, '0')}s` : `${s}s`
 }
 
 export default function AppPage() {
@@ -29,11 +32,19 @@ export default function AppPage() {
   const [user, setUser]         = useState(null)
   const [history, setHistory]   = useState([])
   const pollRef                 = useRef(null)
-  const [hintIdx, setHintIdx]   = useState(0)
+  const [elapsed, setElapsed]   = useState(0)
+  const [hasCode, setHasCode]   = useState(false)
+  const [pollPulse, setPollPulse] = useState(0)
+  const startedAtRef            = useRef(null)
 
+  // Tick elapsed counter every second while a job is running.
   useEffect(() => {
-    if (status !== 'PENDING') return
-    const t = setInterval(() => setHintIdx(i => (i + 1) % PENDING_HINTS.length), 2500)
+    if (status !== 'PENDING' && status !== 'PROCESSING') return
+    const t = setInterval(() => {
+      if (startedAtRef.current) {
+        setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000))
+      }
+    }, 1000)
     return () => clearInterval(t)
   }, [status])
 
@@ -67,14 +78,15 @@ export default function AppPage() {
       }
       try {
         const data = await animations.get(id)
+        setPollPulse(p => p + 1)
+        setStatus(data.status)
+        setHasCode(!!data.manim_code)
         if (data.status === 'COMPLETED') {
           clearInterval(pollRef.current)
           setVideoUrl(data.video_url)
-          setStatus('COMPLETED')
           loadHistory()
         } else if (data.status === 'FAILED') {
           clearInterval(pollRef.current)
-          setStatus('FAILED')
           setErrorMsg(data.error_message || 'Render failed.')
           loadHistory()
         }
@@ -82,7 +94,7 @@ export default function AppPage() {
       } catch (_) {
         // transient error — keep polling
       }
-    }, 3000)
+    }, 2000)
   }
 
   function handleGenerate(e) {
@@ -91,6 +103,9 @@ export default function AppPage() {
     clearInterval(pollRef.current)
     setVideoUrl(null)
     setErrorMsg(null)
+    setHasCode(false)
+    setElapsed(0)
+    startedAtRef.current = Date.now()
     setStatus('PENDING')
 
     animations.create(prompt)
@@ -111,6 +126,9 @@ export default function AppPage() {
     setActiveId(null)
     setVideoUrl(null)
     setErrorMsg(null)
+    setHasCode(false)
+    setElapsed(0)
+    startedAtRef.current = null
   }
 
   function handleLogout() {
@@ -262,25 +280,90 @@ export default function AppPage() {
               </div>
             )}
 
-            {isRunning && (
-              <div className="flex flex-col items-center gap-4 p-12 text-center max-w-sm">
-                <div className="w-10 h-10 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
-                <p className="font-display text-[18px] text-ink tracking-tight">
-                  {status === 'PENDING' ? PENDING_HINTS[hintIdx] : 'Generating your animation…'}
-                </p>
-                <p className="text-[13px] text-slate-400 leading-relaxed">
-                  {status === 'PENDING'
-                    ? 'Picking up your job now — usually starts within a few seconds.'
-                    : 'Claude is writing Manim code and rendering your video. This takes 30–60 seconds.'}
-                </p>
-                <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-700"
-                    style={{ width: status === 'PENDING' ? '25%' : '55%' }}
-                  />
+            {isRunning && (() => {
+              // Sub-phase: PENDING → "queued"; PROCESSING + no code → "writing";
+              // PROCESSING + code present → "rendering". Each phase contributes a
+              // share of the progress bar so the bar always advances over time.
+              const phase = status === 'PENDING' ? 'queued' : (hasCode ? 'rendering' : 'writing')
+              const phaseLabel = {
+                queued:    'Queued',
+                writing:   'Claude is writing Manim code',
+                rendering: 'Rendering video frames',
+              }[phase]
+              const phaseDetail = {
+                queued:    'Job accepted — backend is picking it up.',
+                writing:   'Asking Claude for a Manim scene tailored to your prompt.',
+                rendering: 'Manim is drawing each frame and encoding the video.',
+              }[phase]
+              const totalBudget = EXPECTED_PENDING_SEC + EXPECTED_WRITING_SEC + EXPECTED_RENDER_SEC
+              const phaseStart = phase === 'queued'
+                ? 0
+                : phase === 'writing'
+                  ? EXPECTED_PENDING_SEC
+                  : EXPECTED_PENDING_SEC + EXPECTED_WRITING_SEC
+              const phaseBudget = phase === 'queued'
+                ? EXPECTED_PENDING_SEC
+                : phase === 'writing'
+                  ? EXPECTED_WRITING_SEC
+                  : EXPECTED_RENDER_SEC
+              // Within-phase progress, capped at 95% so the bar never claims "done".
+              const withinPhase = Math.min(elapsed - phaseStart, phaseBudget * 0.95)
+              const rawPct = ((phaseStart + Math.max(0, withinPhase)) / totalBudget) * 100
+              const pct = Math.min(95, Math.max(2, rawPct))
+              return (
+                <div className="flex flex-col items-center gap-4 p-12 text-center max-w-sm w-full">
+                  <div className="w-10 h-10 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
+                  <p className="font-display text-[18px] text-ink tracking-tight">{phaseLabel}…</p>
+                  <p className="text-[13px] text-slate-400 leading-relaxed">{phaseDetail}</p>
+
+                  <div className="w-full max-w-xs space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                      <span>{Math.round(pct)}%</span>
+                      <span>elapsed {formatElapsed(elapsed)}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phase chips so the user can see exactly which step is active */}
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase">
+                    {['queued', 'writing', 'rendering'].map(p => {
+                      const order = { queued: 0, writing: 1, rendering: 2 }
+                      const active = phase === p
+                      const done = order[phase] > order[p]
+                      return (
+                        <span
+                          key={p}
+                          className={`px-2 py-1 rounded-md border transition-colors ${
+                            active
+                              ? 'bg-primary text-white border-primary'
+                              : done
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : 'bg-slate-50 text-slate-400 border-slate-200'
+                          }`}
+                        >
+                          {done ? '✓ ' : ''}{p}
+                        </span>
+                      )
+                    })}
+                  </div>
+
+                  {/* Live polling indicator — flashes on every successful poll so
+                      the user knows the page is actively talking to the backend. */}
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <span className="relative flex w-1.5 h-1.5">
+                      <span className="absolute inline-flex w-full h-full rounded-full bg-green-400 opacity-75 animate-ping" />
+                      <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-green-500" />
+                    </span>
+                    <span>live · {pollPulse} {pollPulse === 1 ? 'check' : 'checks'}</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {status === 'COMPLETED' && videoUrl && (
               <div className="w-full h-full flex flex-col items-center justify-center p-6 gap-4">

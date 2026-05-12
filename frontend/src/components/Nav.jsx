@@ -1,9 +1,22 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 export default function Nav() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const isApp = pathname === '/app'
+
+  function jumpTo(id) {
+    return (e) => {
+      e.preventDefault()
+      if (pathname !== '/') {
+        navigate('/#' + id)
+        return
+      }
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-100">
@@ -18,12 +31,12 @@ export default function Nav() {
         {!isApp && (
           <ul className="flex items-center gap-8 list-none">
             <li>
-              <a href="/#how-it-works" className="text-sm font-medium text-slate-500 hover:text-ink transition-colors">
+              <a href="/#how-it-works" onClick={jumpTo('how-it-works')} className="text-sm font-medium text-slate-500 hover:text-ink transition-colors">
                 How it works
               </a>
             </li>
             <li>
-              <a href="/#features" className="text-sm font-medium text-slate-500 hover:text-ink transition-colors">
+              <a href="/#features" onClick={jumpTo('features')} className="text-sm font-medium text-slate-500 hover:text-ink transition-colors">
                 Features
               </a>
             </li>
